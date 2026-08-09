@@ -354,7 +354,7 @@ docs/SESSION-HANDOFF-2026-04-14.md  ← фактический файл за к�
 первая задача) и соберу самодостаточный документ для следующей сессии.
 
 Хранить в `docs/SESSION-HANDOFF-YYYY-MM-DD.md`.
-Подробности — `recipes/session-handoff.md`.
+Полный рецепт — локальная копия `docs/practices/session-handoff.md`.
 <!-- [claude-code-practices v1.7] END: session-handoff -->
 ```
 

@@ -143,7 +143,7 @@ Claude Code продемонстрировать блокировку) — ме�
 правки» — я предложу механизм, покажу таблицу испытаний до подключения
 и проведу боевую проверку после.
 
-Подробности — recipes/rule-enforcement-hooks.md.
+Полный рецепт — локальная копия `docs/practices/rule-enforcement-hooks.md`.
 <!-- [claude-code-practices v1.10] END: rule-enforcement-hooks -->
 ```
 
