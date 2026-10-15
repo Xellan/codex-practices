@@ -15,6 +15,7 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 ## Current module
 - Entry point: CODEX-START.md
 - How-to: recipes/setup-agents-md.md
+- Behavior selection: recipes/behavior-rules.md (same Q&A, same managed AGENTS.md block, no second installation flow)
 - Background: practices/01-agents-md.md
 - Templates: templates/agents/
 - Acceptance scenarios: tests/agents-md-acceptance.md
