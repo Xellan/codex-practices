@@ -1,0 +1,25 @@
+
+# Codex Practices — instructions for contributors
+
+This repository is an incremental adaptation of Claude Code Practices for Codex. The legacy README.md and START.md still describe the original Claude-based installer. For the Codex AGENTS.md module, use CODEX-START.md and recipes/setup-agents-md.md.
+
+## Development contract
+- Work on one agreed function at a time: research → design → user approval → implementation → verification.
+- Do not modify unrelated recipes or migrate the remaining Claude components without explicit approval.
+- Prefer native, currently documented Codex behavior. Verify product-specific claims against official documentation.
+- Keep generated AGENTS.md files short and project-specific; separate universal behavior from project facts.
+- Never place API keys, credentials, personal secrets, or volatile task state into instruction templates.
+- Preserve user-authored configuration, avoid duplicating rules, and ask before any destructive change.
+- Do not silently edit a user's CODEX_HOME, global instructions, or an unrelated project.
+
+## Current module
+- Entry point: CODEX-START.md
+- How-to: recipes/setup-agents-md.md
+- Background: practices/01-agents-md.md
+- Templates: templates/agents/
+- Acceptance scenarios: tests/agents-md-acceptance.md
+
+## Verification
+- Read the affected Markdown files and check relative links.
+- Follow the acceptance scenarios relevant to the change.
+- Do not run Codex model calls automatically as part of everyday work; installation-only smoke tests require permission.
