@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "notice": "Categories for recommendations; not download URLs or endorsements",
+  "items": [
+    {
+      "id": "project-memory",
+      "source": "local",
+      "path": "skills/project-memory/SKILL.md",
+      "when": "Durable project handoff and resume",
+      "scope": "project",
+      "activation": "adaptive"
+    },
+    {
+      "id": "systematic-debugging",
+      "source": "category",
+      "when": "Repeated code or infrastructure diagnosis lacking a reliable procedure",
+      "scope": "project",
+      "activation": "adaptive"
+    },
+    {
+      "id": "code-review",
+      "source": "category",
+      "when": "Repeated change review not already handled by native review commands",
+      "scope": "project",
+      "activation": "adaptive"
+    },
+    {
+      "id": "environment-audit",
+      "source": "category",
+      "when": "Repeated inspection of toolchain and runtime environments",
+      "scope": "global",
+      "activation": "explicit"
+    },
+    {
+      "id": "skill-creator",
+      "source": "codex-built-in",
+      "when": "Need to create a genuine new skill",
+      "scope": "native",
+      "activation": "explicit"
+    }
+  ]
+}
