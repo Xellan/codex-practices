@@ -1,0 +1,23 @@
+# Copy into the target project's root only after reviewing actual owner paths.
+# This template contains ownership *rules*, not current values.
+schema_version = 1
+
+[[facts]]
+id = "release_version"
+description = "Current release version"
+source_type = "file"
+source = "VERSION.md"
+review_in = ["README.md"] # Human review only; not an automatic edit.
+
+[[facts]]
+id = "project_status"
+description = "Current project milestone and next steps"
+source_type = "file"
+source = "docs/status.md"
+
+# An external system is a snapshot source, never proof of current status.
+# [[facts]]
+# id = "deployment"
+# description = "Current deployment status"
+# source_type = "external"
+# source = "deployment-tracker:production"
