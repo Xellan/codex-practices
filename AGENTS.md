@@ -24,6 +24,8 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 - Handoff unit tests: tests/test_handoff.py
 - Optional Multi-Agent module (#8): recipes/setup-multi-agent.md, skills/multi-agent/scripts/agent_worktrees.py and tests/test_agent_worktrees.py; optional Skill: skills/multi-agent/SKILL.md; worktrees are not security sandboxes.
 
+- Model efficiency (#9): recipes/setup-model-efficiency.md, skills/model-efficiency/SKILL.md + scripts, tests/test_model_efficiency.py. Main model remains user-owned; RTK hooks require a separate, explicit opt-in.
+
 ## Verification
 - Read the affected Markdown files and check relative links.
 - Follow the acceptance scenarios relevant to the change.
