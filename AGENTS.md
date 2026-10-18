@@ -26,6 +26,8 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 
 - Model efficiency (#9): recipes/setup-model-efficiency.md, skills/model-efficiency/SKILL.md + scripts, tests/test_model_efficiency.py. Main model remains user-owned; RTK hooks require a separate, explicit opt-in.
 
+- Permissions & Guardrails (#4): recipes/setup-permissions.md and skills/permissions/; explicit session consent; no system enforcement beyond native sandbox.
+
 ## Verification
 - Read the affected Markdown files and check relative links.
 - Follow the acceptance scenarios relevant to the change.
