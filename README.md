@@ -1,4 +1,4 @@
-> **Адаптация под Codex находится в разработке.** Модули: настройка глобального и проектного `AGENTS.md` и автоматический подбор правил Behavior Rules, а также Project Memory с Session Handoff: [CODEX-START.md](CODEX-START.md). Остальные инструкции на этой странице описывают оригинальный Claude Code Practices и пока **не адаптированы**. Изменения выполняются по одной согласованной функции за раз.
+> **Адаптация под Codex находится в разработке.** Модули: настройка глобального и проектного `AGENTS.md` и автоматический подбор правил Behavior Rules, а также Project Memory с Session Handoff: [CODEX-START.md](CODEX-START.md). Отдельно доступен **Multi-Agent Architecture (#8)**: [рецепт](recipes/setup-multi-agent.md), [локальный Git worktree helper](scripts/agent_worktrees.py), [тесты](tests/test_agent_worktrees.py). Функции №4–7 ещё не реализованы, поэтому модельные политики и безопасность нельзя считать технически обеспеченными. Остальные инструкции на этой странице описывают оригинальный Claude Code Practices и пока **не адаптированы**. Изменения выполняются по одной согласованной функции за раз.
 
 ---
 

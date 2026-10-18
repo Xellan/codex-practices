@@ -22,6 +22,7 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 - Project Memory: recipes/setup-project-memory.md (Native Memories opt-in, durable project knowledge, functional Handoff)
 - Project Handoff Skill: skills/project-memory/SKILL.md and skills/project-memory/scripts/handoff.py
 - Handoff unit tests: tests/test_handoff.py
+- Optional Multi-Agent module (#8): recipes/setup-multi-agent.md, scripts/agent_worktrees.py and tests/test_agent_worktrees.py; worktrees are not security sandboxes.
 
 ## Verification
 - Read the affected Markdown files and check relative links.
