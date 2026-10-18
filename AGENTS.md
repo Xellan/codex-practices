@@ -34,6 +34,8 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 
 - Verification & TDD (#7): recipes/setup-verification.md, skills/verification/, tests/test_verification_report.py. Checks require real evidence; no fabricated PASS.
 
+- MCP Servers Management (#10): recipes/setup-mcp-codex.md, skills/mcp-management/SKILL.md, tests/test_mcp_management.py. Initial connection and permission increases require consent; pinned local updates are session-triggered.
+
 ## Verification
 - Read the affected Markdown files and check relative links.
 - Follow the acceptance scenarios relevant to the change.
