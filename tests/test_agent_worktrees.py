@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/agent_worktrees.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "skills/multi-agent/scripts/agent_worktrees.py"
 
 
 class AgentWorktreeTests(unittest.TestCase):
