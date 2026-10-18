@@ -32,6 +32,8 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 
 - Skills Management (#6): recipes/setup-skills-management.md; skills/skills-management/ and curated category catalog. Native installation only after explicit consent.
 
+- Verification & TDD (#7): recipes/setup-verification.md, skills/verification/, tests/test_verification_report.py. Checks require real evidence; no fabricated PASS.
+
 ## Verification
 - Read the affected Markdown files and check relative links.
 - Follow the acceptance scenarios relevant to the change.
