@@ -19,6 +19,9 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 - Background: practices/01-agents-md.md
 - Templates: templates/agents/
 - Acceptance scenarios: tests/agents-md-acceptance.md
+- Project Memory: recipes/setup-project-memory.md (Native Memories opt-in, durable project knowledge, functional Handoff)
+- Project Handoff Skill: skills/project-memory/SKILL.md and skills/project-memory/scripts/handoff.py
+- Handoff unit tests: tests/test_handoff.py
 
 ## Verification
 - Read the affected Markdown files and check relative links.
