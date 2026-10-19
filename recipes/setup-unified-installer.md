@@ -13,7 +13,7 @@ This is the primary entry point for installing **bundled Skills** into a confirm
 
 ## Commands
 
-Read-only plan for modules included in this checkout (currently #3–9 in master; #10/#11 become available only after their PR sources are integrated into the package):
+Read-only plan for modules included in this checkout (in master currently #3–9; in this integration checkout #10/#11 are also bundled):
 
     python3 scripts/codex_practices_setup.py --project /absolute/project plan
 
