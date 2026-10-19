@@ -162,6 +162,20 @@ source='VERSION.md'
         self.assertEqual(report['scanned_docs'], 0)
 
     def test_unrelated_targeted_audit_suppresses_semantic_review(self):
+        # Only a declared review_in pointer should generate a semantic-review finding.
+        self.mk('fact-owners.toml', """schema_version=1
+[[facts]]
+id='version'
+description='Release version'
+source_type='file'
+source='VERSION.md'
+review_in=['README.md']
+[[facts]]
+id='external_state'
+description='External tracker'
+source_type='external'
+source='tracker:release'
+""")
         self.mk('docs/unrelated.md', 'hello')
         report = inspect(self.root, load_map(self.root), ['docs/unrelated.md'])
         self.assertFalse(any(x['kind'] == 'semantic_review' for x in report['findings']))

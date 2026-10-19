@@ -17,7 +17,7 @@ class UnifiedInstallTests(unittest.TestCase):
         self.project = self.tmp / "project"
         self.project.mkdir()
         self.package = self.tmp / "package"
-        (self.package / "skills").mkdir()
+        (self.package / "skills").mkdir(parents=True)
 
     def skill(self, folder, name, body="Text"):
         source = self.package / "skills" / folder
