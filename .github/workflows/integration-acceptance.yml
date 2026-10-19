@@ -1,0 +1,97 @@
+name: Codex Practices Integration Acceptance
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-acceptance:
+    name: Python ${{ matrix.python-version }} offline checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Offline module unit tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Isolated installer lifecycle acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$(mktemp -d)"
+          PROJECT="$(mktemp -d)"
+          python scripts/codex_practices_setup.py --project "$PROJECT" plan > /tmp/codex-install-plan.json
+          PLAN_HASH="$(python -c 'import json;print(json.load(open("/tmp/codex-install-plan.json"))["plan_sha256"])')"
+          python scripts/codex_practices_setup.py --project "$PROJECT" apply --expected-plan-sha "$PLAN_HASH" --confirm INSTALL_APPROVED_CODEX_PRACTICES > /tmp/codex-installed.json
+          MANIFEST="$(python -c 'import json;print(json.load(open("/tmp/codex-installed.json"))["manifest"])')"
+          python scripts/codex_practices_setup.py --project "$PROJECT" plan > /tmp/codex-repeat-plan.json
+          python -c 'import json; p=json.load(open("/tmp/codex-repeat-plan.json")); assert all(m["status"]=="unchanged" for m in p["modules"]), p'
+          python scripts/codex_practices_setup.py --project "$PROJECT" rollback --manifest "$MANIFEST" --confirm ROLLBACK_CODEX_PRACTICES
+          python scripts/codex_practices_setup.py --project "$PROJECT" plan > /tmp/codex-after-rollback.json
+          python -c 'import json; p=json.load(open("/tmp/codex-after-rollback.json")); assert all(m["status"]=="create" for m in p["modules"]), p'
+      - name: Static link and syntax check
+        run: |
+          python -m compileall -q scripts skills tests
+
+  codex-cli-compat:
+    name: Actual Codex CLI flag compatibility (no authentication)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install official pinned Codex CLI for help-only probe
+        run: |
+          npm install --global --prefix "$RUNNER_TEMP/codex-offline-probe" @openai/codex@0.163.0
+          "$RUNNER_TEMP/codex-offline-probe/bin/codex" --version
+      - name: Verify launcher flags against real binary without signing in
+        run: |
+          python - "$RUNNER_TEMP/codex-offline-probe/bin/codex" <<'PY'
+          import pathlib
+          import sys
+          sys.path.insert(0, str(pathlib.Path("skills/permissions/scripts").resolve()))
+          import codex_start
+          codex_start.check_cli(sys.argv[1])
+          for profile in ("review", "development", "infrastructure"):
+              flags = codex_start.preview(pathlib.Path("/tmp/untrusted-probe"), profile, profile == "infrastructure")
+              assert "--cd" in flags and "--sandbox" in flags and "--ask-for-approval" in flags
+          print("Codex CLI help/flag compatibility: PASS; no login or model requests")
+          PY
+
+  package-candidate:
+    name: Build candidate bundle
+    runs-on: ubuntu-latest
+    needs: offline-acceptance
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create reproducible source archive and checksum
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --prefix=codex-practices/ -o codex-practices-candidate.tar.gz HEAD
+          sha256sum codex-practices-candidate.tar.gz > codex-practices-candidate.sha256
+          test -s codex-practices-candidate.tar.gz
+          tar -tzf codex-practices-candidate.tar.gz > "$RUNNER_TEMP/archive-files.txt"
+          grep -Fxq codex-practices/scripts/codex_practices_setup.py "$RUNNER_TEMP/archive-files.txt"
+          mkdir -p "$RUNNER_TEMP/unpack"
+          tar -xzf codex-practices-candidate.tar.gz -C "$RUNNER_TEMP/unpack"
+          python "$RUNNER_TEMP/unpack/codex-practices/scripts/codex_practices_setup.py" --project "$RUNNER_TEMP/unpack" plan >/dev/null
+          cat codex-practices-candidate.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-practices-integration-candidate
+          path: |
+            codex-practices-candidate.tar.gz
+            codex-practices-candidate.sha256
+          retention-days: 14

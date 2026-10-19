@@ -34,7 +34,13 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 
 - Verification & TDD (#7): recipes/setup-verification.md, skills/verification/, tests/test_verification_report.py. Checks require real evidence; no fabricated PASS.
 
+- Unified installer: [recipe](recipes/setup-unified-installer.md) and [CLI](scripts/codex_practices_setup.py), Skill-only mechanical installation with one consent, no duplicate AGENTS Q&A and no silent overwrites. The integration branch contains reviewed source snapshots of #10/#11/#13/#14; master remains unchanged pending approval.
+
+- MCP Servers Management (#10): recipes/setup-mcp-codex.md, skills/mcp-management/SKILL.md, tests/test_mcp_management.py. Exact approved tools and reviewed release hashes; no automatic approval of new scopes or unauthenticated health claims.
+- Project Inventory & Fact Ownership (#11): recipes/setup-project-inventory.md, skills/project-inventory/, templates/project-inventory/fact-owners.toml, tests/test_project_inventory.py. Owner map paths require project-specific approval; no autonomous semantic edits.
+
 ## Verification
 - Read the affected Markdown files and check relative links.
 - Follow the acceptance scenarios relevant to the change.
 - Do not run Codex model calls automatically as part of everyday work; installation-only smoke tests require permission.
+
