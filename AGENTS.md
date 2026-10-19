@@ -38,3 +38,5 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 - Read the affected Markdown files and check relative links.
 - Follow the acceptance scenarios relevant to the change.
 - Do not run Codex model calls automatically as part of everyday work; installation-only smoke tests require permission.
+
+- Unified installer: [recipe](recipes/setup-unified-installer.md) and [CLI](scripts/codex_practices_setup.py), Skill-only mechanical installation with one consent, no duplicate AGENTS Q&A and no silent overwrites. Draft PR modules #10/#11 not copied into master before approval.
