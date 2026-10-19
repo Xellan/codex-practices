@@ -102,24 +102,66 @@ def load_map(root: Path, name: str = 'fact-owners.toml') -> list[dict]:
     return facts
 
 
-def docs(root: Path, changed: list[str] | None) -> list[str]:
-    if changed is not None:
-        selected = []
-        for item in changed:
-            p = relative(root, item)
-            if p.suffix.lower() in ('.md', '.markdown') and p.is_file() and p.stat().st_size <= MAX_DOCUMENT:
-                selected.append(p.relative_to(root).as_posix())
-        return sorted(set(selected))
+def docs(root: Path, changed: list[str] | None) -> tuple[list[str], dict]:
+    """Scan in-scope docs and make omissions visible (excluded vendor/build dirs out of scope)."""
     selected = []
-    for here, dirs, files in os.walk(root, followlinks=False):
-        dirs[:] = [d for d in sorted(dirs) if d not in SKIP_DIRS and not (Path(here) / d).is_symlink()]
-        for item in sorted(files):
-            if len(selected) >= MAX_SCAN:
-                return selected
-            p = Path(here) / item
-            if p.suffix.lower() in ('.md', '.markdown') and not p.is_symlink() and p.stat().st_size <= MAX_DOCUMENT:
+    examples = []
+    skipped = {}
+    capped = False
+
+    def omit(name: str, reason: str) -> None:
+        skipped[reason] = skipped.get(reason, 0) + 1
+        if len(examples) < 40:
+            examples.append({'path': name, 'reason': reason})
+
+    if changed is not None:
+        for name in sorted(set(changed)):
+            p = relative(root, name)
+            if p.suffix.lower() not in ('.md', '.markdown'):
+                omit(name, 'outside_markdown_scope')
+            elif not p.is_file():
+                omit(name, 'missing_or_unreadable')
+            elif p.stat().st_size > MAX_DOCUMENT:
+                omit(name, 'too_large')
+            else:
                 selected.append(p.relative_to(root).as_posix())
-    return selected
+    else:
+        for here, dirs, files in os.walk(root, followlinks=False):
+            safe_dirs = []
+            for d in sorted(dirs):
+                path = Path(here) / d
+                if d in SKIP_DIRS:
+                    continue
+                if path.is_symlink():
+                    omit(path.relative_to(root).as_posix(), 'symlink_directory')
+                    continue
+                safe_dirs.append(d)
+            dirs[:] = safe_dirs
+            for item in sorted(files):
+                p = Path(here) / item
+                if p.suffix.lower() not in ('.md', '.markdown'):
+                    continue
+                name = p.relative_to(root).as_posix()
+                if p.is_symlink() or not p.is_file():
+                    omit(name, 'symlink_or_nonregular')
+                elif p.stat().st_size > MAX_DOCUMENT:
+                    omit(name, 'too_large')
+                elif len(selected) >= MAX_SCAN:
+                    capped = True
+                    omit(name, 'scan_limit_reached')
+                    break
+                else:
+                    selected.append(name)
+            if capped:
+                break
+    return selected, {
+        'complete_for_scope': not skipped and not capped,
+        'skipped_count_by_reason': skipped,
+        'skipped_examples': examples,
+        'scan_limit_reached': capped,
+        'scope': 'targeted' if changed is not None else 'full',
+        'excluded_directories_by_design': sorted(SKIP_DIRS) if changed is None else [],
+    }
 
 
 def masked_code(text: str) -> str:
@@ -184,7 +226,11 @@ def resolved_link(root: Path, document: str, target: str) -> tuple[str, str | No
 
 def inspect(root: Path, fact_map: list[dict], changed: list[str] | None = None) -> dict:
     findings = []
+    selection, coverage = docs(root, changed)
+    relevant_paths = set(changed or [])
     for entry in fact_map:
+        if changed is not None and entry['source'] not in relevant_paths and not (set(entry.get('review_in', [])) & relevant_paths):
+            continue
         if entry['source_type'] == 'file':
             source = entry['source']
             if not relative(root, source).is_file():
@@ -192,8 +238,8 @@ def inspect(root: Path, fact_map: list[dict], changed: list[str] | None = None) 
         else:
             findings.append({'kind': 'external_unverified', 'fact_id': entry['id']})
         for doc in entry.get('review_in', []):
-            findings.append({'kind': 'semantic_review', 'fact_id': entry['id'], 'path': doc})
-    selection = docs(root, changed)
+            if changed is None or doc in relevant_paths or (entry['source_type'] == 'file' and entry['source'] in relevant_paths):
+                findings.append({'kind': 'semantic_review', 'fact_id': entry['id'], 'path': doc})
     patches = []
     for doc in selection:
         try:
@@ -201,6 +247,11 @@ def inspect(root: Path, fact_map: list[dict], changed: list[str] | None = None) 
             text = raw.decode('utf-8')
         except (InventoryError, UnicodeError):
             findings.append({'kind': 'unreadable_document', 'path': doc})
+            counts = coverage['skipped_count_by_reason']
+            counts['unreadable_document'] = counts.get('unreadable_document', 0) + 1
+            if len(coverage['skipped_examples']) < 40:
+                coverage['skipped_examples'].append({'path': doc, 'reason': 'unreadable_document'})
+            coverage['complete_for_scope'] = False
             continue
         mask = masked_code(text)
         local_patch = []
@@ -214,8 +265,8 @@ def inspect(root: Path, fact_map: list[dict], changed: list[str] | None = None) 
                     local_patch.append((m.start(1), m.end(1), suggestion))
         if local_patch:
             patches.append({'path': doc, 'before_sha256': digest(raw), 'replacements': local_patch})
-    return {'mode': 'full' if changed is None else 'targeted', 'scanned_docs': len(selection),
-            'truncated': changed is None and len(selection) >= MAX_SCAN,
+    return {'mode': 'full' if changed is None else 'targeted', 'scanned_docs': len(selection) - coverage['skipped_count_by_reason'].get('unreadable_document', 0),
+            'truncated': coverage['scan_limit_reached'], 'coverage': coverage,
             'findings': findings, 'candidate_fixes': patches,
             'limits': 'Heuristic Markdown inline links only; semantic facts and external status require human verification.'}
 
@@ -230,9 +281,14 @@ def backup_folder(root: Path, supplied: str | None) -> Path:
     # Refuse symlinked ancestors where possible.
     for parent in (folder, *folder.parents):
         if parent.is_symlink(): raise InventoryError('Symlink in backup directory')
-    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if not folder.exists():
+        folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     if not folder.is_dir(): raise InventoryError('Backup location is not a directory')
-    os.chmod(folder, 0o700)
+    info = folder.stat()
+    if info.st_uid != os.geteuid():
+        raise InventoryError('Backup directory must be owned by the current user')
+    if stat.S_IMODE(info.st_mode) & 0o077:
+        raise InventoryError('Backup directory must already be private; set mode 0700 manually')
     return folder
 
 
@@ -340,7 +396,9 @@ def write_report(root: Path, report: dict) -> str:
     path = relative(root, f'audits/audit-docs-{token}.md')
     lines = ['# Project Inventory — Full Audit', '', f'<!-- inventory-summary {json.dumps(counts, sort_keys=True)} -->', '',
              f'Documents scanned: {report["scanned_docs"]}', f'Findings: {len(report["findings"])}',
-             f'Scan capped: {report.get("truncated", False)}', '',
+             f'Scan capped: {report.get("truncated", False)}',
+              f'Coverage complete: {report.get("coverage", {}).get("complete_for_scope", False)}',
+              f'Omitted by reason: {json.dumps(report.get("coverage", {}).get("skipped_count_by_reason", {}), sort_keys=True)}', '',
              '## Findings by class', '']
     lines.extend(f'- {k}: {v}' for k,v in sorted(counts.items()))
     if not counts: lines.append('- No detected mechanical findings')

@@ -36,7 +36,7 @@ source = "tracker:project-alpha"
 
 ## Modes and trigger policy
 
-- **Targeted event audit:** after a documented milestone, changed documentation, or pre-PR checklist, invoke on the affected Markdown files. There is no hidden filesystem watcher, no per-session compulsory full scan, and no automatic on-change Hook.
+- **Targeted event audit:** after a documented milestone, changed documentation, or pre-PR checklist, invoke on the affected Markdown files. Missing or oversized requested documents are reported as incomplete coverage; semantic `review_in` warnings appear only for relevant changed owners or secondary documents. There is no hidden filesystem watcher, no per-session compulsory full scan, and no automatic on-change Hook.
 
 ```bash
 python3 /path/to/codex-practices/skills/project-inventory/scripts/inventory.py --root /absolute/project --changed README.md docs/architecture.md
@@ -62,7 +62,7 @@ python3 /path/to/codex-practices/skills/project-inventory/scripts/inventory.py -
 
 ## Permissions and preservation
 
-This command does not execute checked project files, call a model, access the network or install global hooks. Backups default to `~/.local/state/codex-practices/inventory-backups/<project-hash>/` with user-private filesystem permissions; deletion is **never automatic**. Make sure local backups are not unintentionally included in source control or sent to third parties. Before a fix the helper compares content SHA-256 and rechecks immediately before atomic replace; advisory `flock` serializes this tool's concurrent writers. External editors not using the lock can still race with it. Rollback checks both saved and current content hashes. Writing the report is an explicit option and reports contain paths/classifications, not full document bodies.
+This command does not execute checked project files, call a model, access the network or install global hooks. Backups default to `~/.local/state/codex-practices/inventory-backups/<project-hash>/` with user-private filesystem permissions; deletion is **never automatic**. Existing backup directories must already be owned by the invoking user and private; the helper refuses insecure permissions instead of modifying user directories with chmod. Make sure local backups are not unintentionally included in source control or sent to third parties. Before a fix the helper compares content SHA-256 and rechecks immediately before atomic replace; advisory `flock` serializes this tool's concurrent writers. External editors not using the lock can still race with it. Rollback checks both saved and current content hashes. Writing the report is an explicit option and reports contain paths/classifications, not full document bodies. Scans report oversized/missing documents and symlink-directory skips; build and vendor directories remain intentionally outside the scan scope. Incomplete coverage must never be reported as fully verified.
 
 ## Acceptance criteria and caveats
 

@@ -153,6 +153,40 @@ source='VERSION.md'
         result=inspect(self.root, load_map(self.root), ['README.md'])
         self.assertEqual(result['candidate_fixes'], [])
 
+    def test_targeted_missing_and_oversized_documents_mark_incomplete(self):
+        self.mk('large.md', 'x' * (1024 * 1024 + 1))
+        report = inspect(self.root, load_map(self.root), ['large.md', 'not-found.md'])
+        self.assertFalse(report['coverage']['complete_for_scope'])
+        self.assertEqual(report['coverage']['skipped_count_by_reason']['too_large'], 1)
+        self.assertEqual(report['coverage']['skipped_count_by_reason']['missing_or_unreadable'], 1)
+        self.assertEqual(report['scanned_docs'], 0)
+
+    def test_unrelated_targeted_audit_suppresses_semantic_review(self):
+        self.mk('docs/unrelated.md', 'hello')
+        report = inspect(self.root, load_map(self.root), ['docs/unrelated.md'])
+        self.assertFalse(any(x['kind'] == 'semantic_review' for x in report['findings']))
+        self.assertFalse(any(x['kind'] == 'external_unverified' for x in report['findings']))
+        report_owner = inspect(self.root, load_map(self.root), ['VERSION.md'])
+        self.assertTrue(any(x['kind'] == 'semantic_review' and x['path'] == 'README.md'
+                            for x in report_owner['findings']))
+
+    def test_existing_backup_permissions_not_modified(self):
+        self.mk('docs/Guide.md', 'hello')
+        self.mk('README.md', '[Guide](docs/guide.md)')
+        folder = Path(self.external_backup)
+        folder.mkdir(mode=0o755)
+        folder.chmod(0o755)
+        report = inspect(self.root, load_map(self.root), ['README.md'])
+        with self.assertRaises(InventoryError):
+            apply_fixes(self.root, report, self.external_backup)
+        self.assertEqual(folder.stat().st_mode & 0o777, 0o755)
+
+    def test_full_scan_reports_oversized_markdown(self):
+        self.mk('oversized.md', 'x' * (1024 * 1024 + 1))
+        report = inspect(self.root, load_map(self.root))
+        self.assertFalse(report['coverage']['complete_for_scope'])
+        self.assertEqual(report['coverage']['skipped_count_by_reason']['too_large'], 1)
+
     def test_backup_cannot_be_within_project(self):
         self.mk('docs/Guide.md','A')
         self.mk('README.md','[Guide](docs/guide.md)')
