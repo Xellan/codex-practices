@@ -82,7 +82,8 @@ jobs:
           git archive --format=tar.gz --prefix=codex-practices/ -o codex-practices-candidate.tar.gz HEAD
           sha256sum codex-practices-candidate.tar.gz > codex-practices-candidate.sha256
           test -s codex-practices-candidate.tar.gz
-          tar -tzf codex-practices-candidate.tar.gz | grep -q codex-practices/scripts/codex_practices_setup.py
+          tar -tzf codex-practices-candidate.tar.gz > "$RUNNER_TEMP/archive-files.txt"
+          grep -Fxq codex-practices/scripts/codex_practices_setup.py "$RUNNER_TEMP/archive-files.txt"
           mkdir -p "$RUNNER_TEMP/unpack"
           tar -xzf codex-practices-candidate.tar.gz -C "$RUNNER_TEMP/unpack"
           python "$RUNNER_TEMP/unpack/codex-practices/scripts/codex_practices_setup.py" --project "$RUNNER_TEMP/unpack" plan >/dev/null
