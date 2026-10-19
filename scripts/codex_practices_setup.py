@@ -388,12 +388,16 @@ def main(argv=None) -> int:
         elif args.action == "wizard":
             if not sys.stdin.isatty():
                 raise SetupError("Wizard requires an interactive terminal")
-            current = build_plan(args.project, args.modules)
+            available = present_modules(package_root())
+            print("Available modules in this checkout: " + ", ".join(map(str, available)))
+            choice = input("Select comma-separated modules [default: " + args.modules + "]: ").strip()
+            spec = choice or args.modules
+            current = build_plan(args.project, spec)
             print(json.dumps(current, ensure_ascii=False, indent=2))
             if any(x["status"] in ("conflict", "unavailable") for x in current["modules"]):
                 raise SetupError("Resolve plan conflicts/missing modules first")
             answer = input("Type " + CONFIRM_INSTALL + " to install listed Skills: ")
-            result = install(args.project, args.modules, current["plan_sha256"], answer.strip())
+            result = install(args.project, spec, current["plan_sha256"], answer.strip())
         else:
             result = rollback(args.project, args.manifest, args.confirm)
         print(json.dumps(result, ensure_ascii=False, indent=2))

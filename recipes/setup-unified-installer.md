@@ -29,7 +29,7 @@ Apply the **same selected module set** after inspecting the exact preview:
 
     python3 scripts/codex_practices_setup.py --project /absolute/project --modules 3,4,5,7 apply --expected-plan-sha PRINTED_SHA256 --confirm INSTALL_APPROVED_CODEX_PRACTICES
 
-Single interactive approval (not a replacement for the AGENTS.md interview):
+Interactive selection of module numbers followed by a single exact confirmation (not a replacement for the AGENTS.md interview):
 
     python3 scripts/codex_practices_setup.py --project /absolute/project wizard
 
