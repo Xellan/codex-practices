@@ -41,7 +41,7 @@ Rollback only newly-created, unchanged Skills; previously existing files are nev
 
 - Global: #4 permissions-guardrails, #5 external-guardrails, #6 skills-management → ~/.agents/skills.
 - Project: #3 project-memory, #7 verification, #8 multi-agent, #9 model-efficiency, #10 mcp-management, #11 project-inventory → PROJECT/.agents/skills.
-- The two new draft modules #10/#11 and launcher hardening PR #12 are **not silently imported** into this PR or installed from remote sources. Their currently available source depends on the checked-out package revision.
+- The two new draft modules #10/#11 and overlapping launcher hardening PRs #12/#13 are **not silently imported** into this PR or installed from remote sources. Their currently available source depends on the checked-out package revision.
 - The plan SHA pins source contents, destinations, requested modules and observed conflict statuses. This is a review/consent mechanism, not a cryptographic signature or OS sandbox.
 - A successful copy does not guarantee Codex Skill discovery or safe invocation. Those require the deferred live verification.
 - The installer is non-destructive: no automatic in-place updates; if a user customized a Skill, inspect and explicitly reconcile changes rather than silently replacing them.
