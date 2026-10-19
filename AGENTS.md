@@ -34,6 +34,8 @@ This repository is an incremental adaptation of Claude Code Practices for Codex.
 
 - Verification & TDD (#7): recipes/setup-verification.md, skills/verification/, tests/test_verification_report.py. Checks require real evidence; no fabricated PASS.
 
+- Project Inventory & Fact Ownership (#11): recipes/setup-project-inventory.md, skills/project-inventory/, template fact-owners.toml, tests/test_project_inventory.py. Consent-gated safe fixes; no semantic rewrite or background daemon.
+
 ## Verification
 - Read the affected Markdown files and check relative links.
 - Follow the acceptance scenarios relevant to the change.
