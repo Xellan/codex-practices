@@ -41,3 +41,56 @@ jobs:
       - name: Static link and syntax check
         run: |
           python -m compileall -q scripts skills tests
+
+  codex-cli-compat:
+    name: Actual Codex CLI flag compatibility (no authentication)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install official pinned Codex CLI for help-only probe
+        run: |
+          npm install --global --prefix "$RUNNER_TEMP/codex-offline-probe" @openai/codex@0.163.0
+          "$RUNNER_TEMP/codex-offline-probe/bin/codex" --version
+      - name: Verify launcher flags against real binary without signing in
+        run: |
+          python - "$RUNNER_TEMP/codex-offline-probe/bin/codex" <<'PY'
+          import pathlib
+          import sys
+          sys.path.insert(0, str(pathlib.Path("skills/permissions/scripts").resolve()))
+          import codex_start
+          codex_start.check_cli(sys.argv[1])
+          for profile in ("review", "development", "infrastructure"):
+              flags = codex_start.preview(pathlib.Path("/tmp/untrusted-probe"), profile, profile == "infrastructure")
+              assert "--cd" in flags and "--sandbox" in flags and "--ask-for-approval" in flags
+          print("Codex CLI help/flag compatibility: PASS; no login or model requests")
+          PY
+
+  package-candidate:
+    name: Build candidate bundle
+    runs-on: ubuntu-latest
+    needs: offline-acceptance
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create reproducible source archive and checksum
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --prefix=codex-practices/ -o codex-practices-candidate.tar.gz HEAD
+          sha256sum codex-practices-candidate.tar.gz > codex-practices-candidate.sha256
+          test -s codex-practices-candidate.tar.gz
+          tar -tzf codex-practices-candidate.tar.gz | grep -q codex-practices/scripts/codex_practices_setup.py
+          mkdir -p "$RUNNER_TEMP/unpack"
+          tar -xzf codex-practices-candidate.tar.gz -C "$RUNNER_TEMP/unpack"
+          python "$RUNNER_TEMP/unpack/codex-practices/scripts/codex_practices_setup.py" --project "$RUNNER_TEMP/unpack" plan >/dev/null
+          cat codex-practices-candidate.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-practices-integration-candidate
+          path: |
+            codex-practices-candidate.tar.gz
+            codex-practices-candidate.sha256
+          retention-days: 14
