@@ -247,6 +247,44 @@ def plan(policy,state):
                 changes.append({'name':n,'action':'enable','reason':'successful independently verified health evidence recorded'})
     return changes
 
+def preview_configuration(config, policy, state):
+    """Read-only, redacted preview of the precise proposed managed TOML change.
+
+    Never return existing config bodies, endpoint URLs or executable locations.
+    """
+    before=read_regular(config,required=False)
+    planned=plan(policy,state)
+    current=dict(state['current']) if state else {
+        s['name']:s['initial_version'] for s in policy['servers'] if s['transport']=='stdio'
+    }
+    disabled=set(state['disabled']) if state else set()
+    for item in planned:
+        if item['action']=='upgrade': current[item['name']]=item['to']
+        elif item['action']=='disable': disabled.add(item['name'])
+        elif item['action']=='enable': disabled.discard(item['name'])
+    after=replace_block(before,policy['servers'],current,disabled)
+    servers=[]
+    for item in policy['servers']:
+        info={'name':item['name'],'transport':item['transport'],
+              'tools':item['enabled_tools'],'approval':item['approval'],
+              'required':item['required'],'enabled':item['name'] not in disabled}
+        if item['transport']=='stdio':
+            version=current[item['name']]
+            info['local_version']=version
+            info['local_executable_hash_verified']=release_valid(item,versions(item)[version])
+        else:
+            info['endpoint']='redacted: review approved trust policy locally'
+        servers.append(info)
+    return {'config_path':str(config),'before_sha256':digest(before),
+            'after_sha256':digest(after),
+            'will_create_config':not config.exists(),
+            'would_modify_config':before!=after,
+            'managed_block_action':'update' if state else 'create',
+            'planned_mcp_entries':servers,
+            'user_config_body_redacted':True,
+            'effective_runtime_permissions_verified':False}
+
+
 def initial(project,config,root,policy,sha,expected):
     if state_read(root,required=False):raise Error('Already managed; use maintain, not initial apply')
     old=read_regular(config,required=False)
@@ -277,18 +315,30 @@ def maintain(config,root,policy,sha):
     mutate(config,root,st,new,current,disabled)
     return {'action':'maintained','changes':changes}
 
-def record(root,config,sha,policy,name,result,evidence_path):
+def record(root,config,sha,policy,name,result,evidence_path,attested_sha=None,confirmation=None):
     st=state_read(root)
     fresh_config(config,root,st,sha)
     if name not in st['failures']:raise Error('Server not enrolled')
     evidence=read_regular(evidence_path,512_000)
     if not evidence.strip():raise Error('Empty evidence')
     h=digest(evidence)
+    attested=attested_sha is not None
+    if attested:
+        if not isinstance(attested_sha,str) or not SHA.fullmatch(attested_sha) or h!=attested_sha:
+            raise Error('Evidence hash differs from explicit independent review')
+        if confirmation!='VERIFIED_HEALTH_EVIDENCE':
+            raise Error('Verified evidence requires explicit operator confirmation')
+    elif confirmation is not None:
+        raise Error('Confirmation without an attested SHA is invalid')
     if h in st['evidence'][name]:raise Error('Evidence already recorded')
     st['evidence'][name]=(st['evidence'][name]+[h])[-30:]
-    st['failures'][name]=st['failures'][name]+1 if result=='fail' else 0
+    # Mere log files/observations cannot drive automatic disabling or recovery.
+    if attested:
+        st['failures'][name]=st['failures'][name]+1 if result=='fail' else 0
     state_write(root,st)
-    return {'name':name,'consecutive_failures':st['failures'][name]}
+    return {'name':name,'consecutive_verified_failures':st['failures'][name],
+            'recorded':True,'eligible_for_automation':attested,
+            'attestation_limit':'SHA and token prove operator intent, not the truth or origin of evidence'}
 
 def rollback(config,root,sha):
     st=state_read(root)
@@ -320,6 +370,8 @@ def main(argv=None):
     a=sub.add_parser('apply');a.add_argument('--expected-config-sha',required=True);a.add_argument('--expected-policy-sha',required=True);a.add_argument('--confirm',required=True)
     sub.add_parser('maintain')
     rec=sub.add_parser('record');rec.add_argument('--server',required=True);rec.add_argument('--result',choices=['pass','fail'],required=True);rec.add_argument('--evidence',required=True)
+    rec.add_argument('--attest-evidence-sha',help='SHA-256 reviewed separately by an operator')
+    rec.add_argument('--confirm',help='Required for attested evidence only')
     rb=sub.add_parser('rollback');rb.add_argument('--confirm',required=True)
     args=ap.parse_args(argv)
     try:
@@ -328,16 +380,21 @@ def main(argv=None):
         else:
             if not args.policy:raise Error('--policy required')
             policy,sha=policy_load(args.policy)
-            with lock(root):
+            if args.action=='plan':
+                # A preview must not create the private state/lock directory.
                 st=state_read(root,required=False)
-                if args.action=='plan':
-                    if st: fresh_config(config,root,st,sha)
-                    result={'policy_sha256':sha,'approved':bool(st),'changes':plan(policy,st), 'initial_install_requires_approval':not bool(st)}
-                elif args.action=='apply':
+                if st: fresh_config(config,root,st,sha)
+                result={'policy_sha256':sha,'approved':bool(st),'changes':plan(policy,st),
+                        'initial_install_requires_approval':not bool(st),
+                        'config_preview':preview_configuration(config,policy,st)}
+            else:
+              with lock(root):
+                st=state_read(root,required=False)
+                if args.action=='apply':
                     if args.confirm!='INSTALL_APPROVED_MCP' or sha!=args.expected_policy_sha:raise Error('Initial installation consent/policy hash mismatch')
                     result=initial(project,config,root,policy,sha,args.expected_config_sha)
                 elif args.action=='maintain':result=maintain(config,root,policy,sha)
-                elif args.action=='record':result=record(root,config,sha,policy,args.server,args.result,args.evidence)
+                elif args.action=='record':result=record(root,config,sha,policy,args.server,args.result,args.evidence,args.attest_evidence_sha,args.confirm)
                 elif args.action=='rollback':
                     if args.confirm!='RESTORE_PREVIOUS_MCP':raise Error('Rollback requires explicit confirmation')
                     result=rollback(config,root,sha)

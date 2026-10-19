@@ -108,12 +108,49 @@ class MCPManagementTests(unittest.TestCase):
         self.assertNotEqual(self.run_cli('maintain').returncode,0)
         self.assertIn('user change',self.config.read_text())
 
+    def verified_record(self, server, result, evidence):
+        return self.run_cli('record','--server',server,'--result',result,
+                            '--evidence',str(evidence),
+                            '--attest-evidence-sha',sha(evidence.read_bytes()),
+                            '--confirm','VERIFIED_HEALTH_EVIDENCE')
+
+    def test_unverified_evidence_does_not_change_health(self):
+        self.approved_install()
+        for i in range(3):
+            evidence=self.root/f'unverified-{i}.txt';evidence.write_text(f'Observation {i}')
+            result=self.run_cli('record','--server','alpha','--result','fail','--evidence',str(evidence))
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertFalse(json.loads(result.stdout)['eligible_for_automation'])
+        self.assertEqual(json.loads(self.run_cli('maintain').stdout)['action'],'unchanged')
+
+    def test_wrong_attestation_hash_does_not_change_health(self):
+        self.approved_install()
+        evidence=self.root/'report.txt';evidence.write_text('unverified observation')
+        result=self.run_cli('record','--server','alpha','--result','fail',
+                            '--evidence',str(evidence),
+                            '--attest-evidence-sha','0'*64,
+                            '--confirm','VERIFIED_HEALTH_EVIDENCE')
+        self.assertNotEqual(result.returncode,0)
+        self.assertEqual(json.loads(self.run_cli('maintain').stdout)['action'],'unchanged')
+
+    def test_plan_redacted_initial_config_diff(self):
+        plan=self.run_cli('plan')
+        self.assertEqual(plan.returncode,0,plan.stderr)
+        report=json.loads(plan.stdout)
+        preview=report['config_preview']
+        self.assertTrue(preview['will_create_config'])
+        self.assertTrue(preview['would_modify_config'])
+        self.assertEqual({x['name'] for x in preview['planned_mcp_entries']},{'alpha','docs'})
+        self.assertEqual(preview['planned_mcp_entries'][1]['endpoint'].split(':')[0],'redacted')
+        self.assertFalse(preview['effective_runtime_permissions_verified'])
+        self.assertFalse(self.private.exists())
+
     def test_distinct_health_failures_disable_optional_only(self):
         self.approved_install()
         for i in range(3):
             evidence=self.root/f'fail-{i}.txt';evidence.write_text(f'Observation #{i}')
             for name in ['alpha','docs']:
-                r=self.run_cli('record','--server',name,'--result','fail','--evidence',str(evidence))
+                r=self.verified_record(name,'fail',evidence)
                 self.assertEqual(r.returncode,0,r.stderr)
         self.assertEqual(self.run_cli('maintain').returncode,0)
         import tomllib
@@ -121,7 +158,7 @@ class MCPManagementTests(unittest.TestCase):
         self.assertFalse(servers['alpha']['enabled'])
         self.assertTrue(servers['docs']['enabled'])
         good=self.root/'good.txt';good.write_text('verified healthy')
-        self.assertEqual(self.run_cli('record','--server','alpha','--result','pass','--evidence',str(good)).returncode,0)
+        self.assertEqual(self.verified_record('alpha','pass',good).returncode,0)
         self.assertEqual(self.run_cli('maintain').returncode,0)
         with self.config.open('rb') as f:servers=tomllib.load(f)['mcp_servers']
         self.assertTrue(servers['alpha']['enabled'])
